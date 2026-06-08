@@ -41,7 +41,7 @@ services:
       RATE_LIMIT_WINDOW_MS: 900000
       RATE_LIMIT_MAX: 20
     healthcheck:
-      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3001/api/health',r=>process.exit(r.statusCode!==200)).on('error',()=>process.exit(1))\""]
+      test: ["CMD-SHELL", "node -e \"require('http').get('http://localhost:3001/api/health',r=>{process.exitCode=r.statusCode!==200?1:0}).on('error',()=>{process.exitCode=1})\""]
       interval: 30s
       timeout: 5s
       start_period: 15s
