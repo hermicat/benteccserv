@@ -1,0 +1,77 @@
+services:
+  # ---- PostgreSQL Database ----
+  db:
+    image: postgres:16-alpine
+    container_name: bentecc-db
+    restart: unless-stopped
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql
+    environment:
+      POSTGRES_DB: benteccserv
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-changeme}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - bentecc-net
+
+  # ---- Node.js Backend API ----
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    container_name: bentecc-api
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: benteccserv
+      DB_USER: postgres
+      DB_PASSWORD: ${DB_PASSWORD:-changeme}
+      PORT: 3001
+      NODE_ENV: production
+      CORS_ORIGINS: http://localhost,http://localhost:80
+      RATE_LIMIT_WINDOW_MS: 900000
+      RATE_LIMIT_MAX: 20
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3001/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - bentecc-net
+
+  # ---- Nginx Frontend ----
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+    container_name: bentecc-web
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:80/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+    networks:
+      - bentecc-net
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  bentecc-net:
+    driver: bridge
