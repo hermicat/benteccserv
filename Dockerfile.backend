@@ -21,7 +21,7 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup && \
 USER appuser
 
 HEALTHCHECK --interval=15s --timeout=10s --start-period=20s --retries=6 \
-  CMD wget -qO- http://localhost:3001/api/health || exit 1
+  CMD wget -qO- http://127.0.0.1:3001/api/health || exit 1
 
 EXPOSE 3001
 
